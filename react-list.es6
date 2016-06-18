@@ -219,8 +219,8 @@ export default class extends Component {
       prev.removeEventListener('scroll', this.updateFrame);
       prev.removeEventListener('mousewheel', NOOP);
     }
-    this.scrollParent.addEventListener('scroll', this.updateFrame);
-    this.scrollParent.addEventListener('mousewheel', NOOP);
+    this.scrollParent.addEventListener('scroll', this.updateFrame, { passive: true });
+    this.scrollParent.addEventListener('mousewheel', NOOP, { passive: true });
   }
 
   updateSimpleFrame(cb) {
