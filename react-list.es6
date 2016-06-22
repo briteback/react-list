@@ -87,6 +87,9 @@ export default class extends Component {
     window.removeEventListener('resize', this.updateFrame);
     this.scrollParent.removeEventListener('scroll', this.updateFrame);
     this.scrollParent.removeEventListener('mousewheel', NOOP);
+    if (this.pendingRaf) {
+      raf.cancel(this.pendingRaf);
+    }
   }
 
   getOffset(el) {
@@ -202,11 +205,19 @@ export default class extends Component {
   }
 
   updateFrame(cb) {
-    raf(() => this.doUpdateFrame(cb));
+    const newScrollParent = this.getScrollParent();
+    if (!newScrollParent) {
+      // the parent might be removed before this RAF is called
+      return;
+    }
+    this.updateScrollParent(newScrollParent);
+    if (!this.pendingRaf) {
+      this.pendingRaf = raf(() => this.doUpdateFrame(cb));
+    }
   }
 
   doUpdateFrame(cb) {
-    this.updateScrollParent();
+    this.pendingRaf = false;
     if (typeof cb != 'function') cb = NOOP;
     switch (this.props.type) {
     case 'simple': return this.updateSimpleFrame(cb);
@@ -215,9 +226,9 @@ export default class extends Component {
     }
   }
 
-  updateScrollParent() {
+  updateScrollParent(newScrollParent) {
     const prev = this.scrollParent;
-    this.scrollParent = this.getScrollParent();
+    this.scrollParent = newScrollParent;
     if (prev === this.scrollParent) return;
     if (prev) {
       prev.removeEventListener('scroll', this.updateFrame);
