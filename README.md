@@ -1,3 +1,7 @@
+# Fork info
+Exposes source for direct import
+Uses request animation frame to fix performance problems on android
+
 # ReactList
 
 A versatile infinite scroll [React] component.

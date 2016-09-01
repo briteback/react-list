@@ -1,15 +1,9 @@
+import module from 'module';
 import React, {Component, PropTypes} from 'react';
 import ReactDOM from 'react-dom';
 import raf from 'raf';
 
 const {findDOMNode} = ReactDOM;
-
-const isEqualSubset = (a, b) => {
-  for (let key in a) if (a[key] !== b[key]) return false;
-  return true;
-};
-
-const isEqual = (a, b) => isEqualSubset(a, b) && isEqualSubset(b, a);
 
 const CLIENT_SIZE_KEYS = {x: 'clientWidth', y: 'clientHeight'};
 const CLIENT_START_KEYS = {x: 'clientTop', y: 'clientLeft'};
@@ -23,7 +17,24 @@ const SIZE_KEYS = {x: 'width', y: 'height'};
 
 const NOOP = () => {};
 
-export default class extends Component {
+// If a browser doesn't support the `options` argument to
+// add/removeEventListener, we need to check, otherwise we will
+// accidentally set `capture` with a truthy value.
+const PASSIVE = (() => {
+  if (typeof window === 'undefined') return false;
+  let hasSupport = false;
+  try {
+    document.createElement('div').addEventListener('test', NOOP, {
+      get passive() {
+        hasSupport = true;
+        return false;
+      }
+    });
+  } catch (e) {}
+  return hasSupport;
+})() ? {passive: true} : false;
+
+module.exports = class ReactList extends Component {
   static displayName = 'ReactList';
 
   static propTypes = {
@@ -66,7 +77,7 @@ export default class extends Component {
 
   componentWillReceiveProps(next) {
     let {from, size, itemsPerRow} = this.state;
-    this.setState(this.constrain(from, size, itemsPerRow, next));
+    this.maybeSetState(this.constrain(from, size, itemsPerRow, next), NOOP);
   }
 
   componentDidMount() {
@@ -75,18 +86,21 @@ export default class extends Component {
     this.updateFrame(this.scrollTo.bind(this, this.props.initialIndex));
   }
 
-  shouldComponentUpdate(props, state) {
-    return !isEqual(props, this.props) || !isEqual(state, this.state);
-  }
-
   componentDidUpdate() {
     this.updateFrame();
   }
 
+  maybeSetState(b, cb) {
+    const a = this.state;
+    for (let key in b) if (a[key] !== b[key]) return this.setState(b, cb);
+
+    cb();
+  }
+
   componentWillUnmount() {
     window.removeEventListener('resize', this.updateFrame);
-    this.scrollParent.removeEventListener('scroll', this.updateFrame);
-    this.scrollParent.removeEventListener('mousewheel', NOOP);
+    this.scrollParent.removeEventListener('scroll', this.updateFrame, PASSIVE);
+    this.scrollParent.removeEventListener('mousewheel', NOOP, PASSIVE);
     if (this.pendingRaf) {
       raf.cancel(this.pendingRaf);
     }
@@ -149,10 +163,11 @@ export default class extends Component {
 
   getScrollSize() {
     const {scrollParent} = this;
-    const {axis} = this.props;
+    const {body, documentElement} = document;
+    const key = SCROLL_SIZE_KEYS[this.props.axis];
     return scrollParent === window ?
-      document.body[SCROLL_SIZE_KEYS[axis]] :
-      scrollParent[SCROLL_SIZE_KEYS[axis]];
+      Math.max(body[key], documentElement[key]) :
+      scrollParent[key];
   }
 
   hasDeterminateSize() {
@@ -231,11 +246,11 @@ export default class extends Component {
     this.scrollParent = newScrollParent;
     if (prev === this.scrollParent) return;
     if (prev) {
-      prev.removeEventListener('scroll', this.updateFrame);
-      prev.removeEventListener('mousewheel', NOOP);
+      prev.removeEventListener('scroll', this.updateFrame, PASSIVE);
+      prev.removeEventListener('mousewheel', NOOP, PASSIVE);
     }
-    this.scrollParent.addEventListener('scroll', this.updateFrame, { passive: true });
-    this.scrollParent.addEventListener('mousewheel', NOOP, { passive: true });
+    this.scrollParent.addEventListener('scroll', this.updateFrame, PASSIVE);
+    this.scrollParent.addEventListener('mousewheel', NOOP, PASSIVE);
   }
 
   updateSimpleFrame(cb) {
@@ -254,7 +269,8 @@ export default class extends Component {
     if (elEnd > end) return cb();
 
     const {pageSize, length} = this.props;
-    this.setState({size: Math.min(this.state.size + pageSize, length)}, cb);
+    const size = Math.min(this.state.size + pageSize, length);
+    this.maybeSetState({size}, cb);
   }
 
   updateVariableFrame(cb) {
@@ -286,7 +302,7 @@ export default class extends Component {
       ++size;
     }
 
-    this.setState({from, size}, cb);
+    this.maybeSetState({from, size}, cb);
   }
 
   updateUniformFrame(cb) {
@@ -303,7 +319,7 @@ export default class extends Component {
       this.props
     );
 
-    return this.setState({itemsPerRow, from, itemSize, size}, cb);
+    return this.maybeSetState({itemsPerRow, from, itemSize, size}, cb);
   }
 
   getSpaceBefore(index, cache = {}) {
@@ -447,4 +463,4 @@ export default class extends Component {
     };
     return <div {...{style}}><div style={listStyle}>{items}</div></div>;
   }
-}
+};
