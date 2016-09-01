@@ -1,4 +1,3 @@
-import module from 'module';
 import React, {Component, PropTypes} from 'react';
 import ReactDOM from 'react-dom';
 import raf from 'raf';
@@ -34,7 +33,7 @@ const PASSIVE = (() => {
   return hasSupport;
 })() ? {passive: true} : false;
 
-module.exports = class ReactList extends Component {
+export default class ReactList extends Component {
   static displayName = 'ReactList';
 
   static propTypes = {
@@ -463,4 +462,4 @@ module.exports = class ReactList extends Component {
     };
     return <div {...{style}}><div style={listStyle}>{items}</div></div>;
   }
-};
+}
