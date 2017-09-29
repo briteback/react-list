@@ -36,7 +36,7 @@ const PASSIVE = (() => {
 export default class ReactList extends Component {
   static displayName = 'ReactList';
 
-  static propTypes = {
+  /*static propTypes = {
     axis: PropTypes.oneOf(['x', 'y']),
     initialIndex: PropTypes.number,
     itemRenderer: PropTypes.func,
@@ -50,7 +50,7 @@ export default class ReactList extends Component {
     type: PropTypes.oneOf(['simple', 'variable', 'uniform']),
     useStaticSize: PropTypes.bool,
     useTranslate3d: PropTypes.bool
-  };
+  };*/
 
   static defaultProps = {
     axis: 'y',
